@@ -19,6 +19,7 @@ from sys import stderr
 REQUEST_TIMEOUT = 10
 DEFAULT_PHONE_REGION = "TW"
 WMN_DATA_URL = "https://raw.githubusercontent.com/WebBreacher/WhatsMyName/main/wmn-data.json"
+USERNAME_FORBIDDEN_CHARS = "/?#@:"
 
 Bl = '\033[30m'  # VARIABLE BUAT WARNA CUYY
 Re = '\033[1;31m'
@@ -65,8 +66,8 @@ def IP_Track(ip=None):
     if not ip_data.get("success"):
         print(f"\n {Re}Error : {ip_data.get('message', 'lookup failed')}")
         return
-    connection = ip_data.get("connection", {})
-    tz = ip_data.get("timezone", {})
+    connection = ip_data.get("connection") or {}
+    tz = ip_data.get("timezone") or {}
     print()
     print(f' {Wh}============= {Gr}SHOW INFORMATION IP ADDRESS {Wh}=============')
     print(f"{Wh}\n IP target       :{Gr}", ip_data.get("ip", ip))
@@ -86,7 +87,7 @@ def IP_Track(ip=None):
     print(f"{Wh} Calling Code    :{Gr}", ip_data.get("calling_code"))
     print(f"{Wh} Capital         :{Gr}", ip_data.get("capital"))
     print(f"{Wh} Borders         :{Gr}", ip_data.get("borders"))
-    print(f"{Wh} Country Flag    :{Gr}", ip_data.get("flag", {}).get("emoji"))
+    print(f"{Wh} Country Flag    :{Gr}", (ip_data.get("flag") or {}).get("emoji"))
     print(f"{Wh} ASN             :{Gr}", connection.get("asn"))
     print(f"{Wh} ORG             :{Gr}", connection.get("org"))
     print(f"{Wh} ISP             :{Gr}", connection.get("isp"))
@@ -152,6 +153,9 @@ def TrackLu(username=None):
     if not username:
         print(f"\n {Wh}[ {Re}! {Wh}] {Re}Username cannot be empty")
         return
+    if any(char.isspace() or char in USERNAME_FORBIDDEN_CHARS for char in username):
+        print(f"\n {Wh}[ {Re}! {Wh}] {Re}Username cannot contain spaces or any of {USERNAME_FORBIDDEN_CHARS}")
+        return
 
     try:
         sites = requests.get(WMN_DATA_URL, timeout=REQUEST_TIMEOUT).json()["sites"]
@@ -193,12 +197,16 @@ def TrackLu(username=None):
     print(f"\n {Wh}========== {Gr}SHOW INFORMATION USERNAME {Wh}==========")
     print()
     for site_name in sorted(found):
-        print(f" {Wh}[ {Gr}+ {Wh}] {site_name} : {Gr}{found[site_name]}")
+        print(f" {Wh}[ {Gr}+ {Wh}] {printable(site_name)} : {Gr}{printable(found[site_name])}")
     print(f"\n {Wh}found {Gr}{len(found)} {Wh}| checked {Gr}{len(sites)} {Wh}| errors {Gr}{errors}")
 
 
 def site_has_account(site, status_code, text):
     return status_code == site["e_code"] and site["e_string"] in text
+
+
+def printable(text):
+    return "".join(filter(str.isprintable, text))
 
 
 @is_option

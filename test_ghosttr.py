@@ -1,4 +1,7 @@
+import contextlib
+import io
 import unittest
+from unittest import mock
 
 import GhostTR
 
@@ -14,6 +17,18 @@ class SiteHasAccountTest(unittest.TestCase):
 
     def test_missing_e_string_is_not_found(self):
         self.assertFalse(GhostTR.site_has_account(SITE, 200, "<h1>nothing here</h1>"))
+
+
+class UsernameInputTest(unittest.TestCase):
+    def test_url_breaking_username_makes_no_request(self):
+        with mock.patch.object(GhostTR.requests, "get") as get, contextlib.redirect_stdout(io.StringIO()):
+            GhostTR.TrackLu.__wrapped__("evil.com/#")
+        get.assert_not_called()
+
+
+class PrintableTest(unittest.TestCase):
+    def test_terminal_escape_sequences_are_stripped(self):
+        self.assertEqual(GhostTR.printable("https://x.io/\x1b[2Jbob"), "https://x.io/[2Jbob")
 
 
 if __name__ == "__main__":
