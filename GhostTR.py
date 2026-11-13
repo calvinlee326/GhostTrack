@@ -36,6 +36,7 @@ Wh = '\033[1;37m'
 
 # decorator for attaching run_banner to a function
 def is_option(func):
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         run_banner()
         func(*args, **kwargs)
@@ -236,18 +237,8 @@ def call_option(opt):
 
 
 def execute_option(opt):
-    try:
-        call_option(opt)
-        input(f'\n{Wh}[ {Gr}+ {Wh}] {Gr}Press enter to continue')
-        main()
-    except ValueError as e:
-        print(e)
-        time.sleep(2)
-        execute_option(opt)
-    except KeyboardInterrupt:
-        print(f'\n{Wh}[ {Re}! {Wh}] {Re}Exit')
-        time.sleep(2)
-        exit()
+    call_option(opt)
+    input(f'\n{Wh}[ {Gr}+ {Wh}] {Gr}Press enter to continue')
 
 
 def option_text():
@@ -267,7 +258,7 @@ def is_in_options(num):
 def option():
     # BANNER TOOLS
     clear()
-    stderr.writelines(f"""
+    stderr.writelines(rf"""
        ________               __      ______                __  
       / ____/ /_  ____  _____/ /_    /_  __/________ ______/ /__
      / / __/ __ \/ __ \/ ___/ __/_____/ / / ___/ __ `/ ___/ //_/
@@ -282,7 +273,6 @@ def option():
 
 def run_banner():
     clear()
-    time.sleep(1)
     stderr.writelines(f"""{Wh}
          .-.
        .'   `.          {Wh}--------------------------------
@@ -298,26 +288,55 @@ def run_banner():
             `.              `.     .
               `'`'`'`---..,___`;.-'
         """)
-    time.sleep(0.5)
 
 
 def main():
-    clear()
-    option()
-    time.sleep(1)
-    try:
-        opt = int(input(f"{Wh}\n [ + ] {Gr}Select Option : {Wh}"))
+    notice = ''
+    while True:
+        option()
+        stderr.write(notice)
+        notice = ''
+        try:
+            opt = int(input(f"{Wh}\n [ + ] {Gr}Select Option : {Wh}"))
+        except ValueError:
+            notice = f'\n{Wh}[ {Re}! {Wh}] {Re}Please input number'
+            continue
+        if not is_in_options(opt):
+            notice = f'\n{Wh}[ {Re}! {Wh}] {Re}Option not found'
+            continue
         execute_option(opt)
-    except ValueError:
-        print(f'\n{Wh}[ {Re}! {Wh}] {Re}Please input number')
-        time.sleep(2)
+
+
+def cli():
+    parser = argparse.ArgumentParser(
+        description='GhostTrack: OSINT lookups for IP addresses, phone numbers and usernames. '
+                    'Run without a command for the interactive menu.')
+    commands = parser.add_subparsers(dest='command', title='commands')
+    ip_cmd = commands.add_parser('ip', help='track an IPv4/IPv6 address or domain, e.g. ip 8.8.8.8 '
+                                            '(no target looks up your own IP)')
+    ip_cmd.add_argument('target', nargs='?', help='IPv4, IPv6 or domain, e.g. 8.8.8.8 or example.com')
+    commands.add_parser('myip', help='show your public IP, e.g. myip')
+    phone_cmd = commands.add_parser('phone', help='track a phone number, e.g. phone +886912345678')
+    phone_cmd.add_argument('number', help='e.g. +886912345678; numbers without + are parsed as '
+                                          f'{DEFAULT_PHONE_REGION}')
+    user_cmd = commands.add_parser('user', help='search a username on 600+ sites, e.g. user johndoe')
+    user_cmd.add_argument('username', help='e.g. johndoe')
+    args = parser.parse_args()
+
+    if args.command == 'ip':
+        IP_Track.__wrapped__(args.target or "")
+    elif args.command == 'myip':
+        showIP.__wrapped__()
+    elif args.command == 'phone':
+        phoneGW.__wrapped__(args.number)
+    elif args.command == 'user':
+        TrackLu.__wrapped__(args.username)
+    else:
         main()
 
 
 if __name__ == '__main__':
     try:
-        main()
-    except KeyboardInterrupt:
+        cli()
+    except (KeyboardInterrupt, EOFError):
         print(f'\n{Wh}[ {Re}! {Wh}] {Re}Exit')
-        time.sleep(2)
-        exit()
