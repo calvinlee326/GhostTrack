@@ -147,51 +147,56 @@ def phoneGW(number=None):
 
 
 @is_option
-def TrackLu():
-    try:
+def TrackLu(username=None):
+    if username is None:
         username = input(f"\n {Wh}Enter Username : {Gr}")
-        results = {}
-        social_media = [
-            {"url": "https://www.facebook.com/{}", "name": "Facebook"},
-            {"url": "https://www.twitter.com/{}", "name": "Twitter"},
-            {"url": "https://www.instagram.com/{}", "name": "Instagram"},
-            {"url": "https://www.linkedin.com/in/{}", "name": "LinkedIn"},
-            {"url": "https://www.github.com/{}", "name": "GitHub"},
-            {"url": "https://www.pinterest.com/{}", "name": "Pinterest"},
-            {"url": "https://www.tumblr.com/{}", "name": "Tumblr"},
-            {"url": "https://www.youtube.com/{}", "name": "Youtube"},
-            {"url": "https://soundcloud.com/{}", "name": "SoundCloud"},
-            {"url": "https://www.snapchat.com/add/{}", "name": "Snapchat"},
-            {"url": "https://www.tiktok.com/@{}", "name": "TikTok"},
-            {"url": "https://www.behance.net/{}", "name": "Behance"},
-            {"url": "https://www.medium.com/@{}", "name": "Medium"},
-            {"url": "https://www.quora.com/profile/{}", "name": "Quora"},
-            {"url": "https://www.flickr.com/people/{}", "name": "Flickr"},
-            {"url": "https://www.periscope.tv/{}", "name": "Periscope"},
-            {"url": "https://www.twitch.tv/{}", "name": "Twitch"},
-            {"url": "https://www.dribbble.com/{}", "name": "Dribbble"},
-            {"url": "https://www.stumbleupon.com/stumbler/{}", "name": "StumbleUpon"},
-            {"url": "https://www.ello.co/{}", "name": "Ello"},
-            {"url": "https://www.producthunt.com/@{}", "name": "Product Hunt"},
-            {"url": "https://www.snapchat.com/add/{}", "name": "Snapchat"},
-            {"url": "https://www.telegram.me/{}", "name": "Telegram"},
-            {"url": "https://www.weheartit.com/{}", "name": "We Heart It"}
-        ]
-        for site in social_media:
-            url = site['url'].format(username)
-            response = requests.get(url)
-            if response.status_code == 200:
-                results[site['name']] = url
-            else:
-                results[site['name']] = (f"{Ye}Username not found {Ye}!")
-    except Exception as e:
-        print(f"{Re}Error : {e}")
+    username = username.strip()
+    if not username:
+        print(f"\n {Wh}[ {Re}! {Wh}] {Re}Username cannot be empty")
         return
+
+    try:
+        sites = requests.get(WMN_DATA_URL, timeout=REQUEST_TIMEOUT).json()["sites"]
+    except (requests.RequestException, ValueError, KeyError):
+        print(f"\n {Wh}[ {Re}! {Wh}] {Re}Could not load the site list, check your connection")
+        return
+    # ponytail: the 23 POST sites are skipped; add POST support when needed.
+    sites = [site for site in sites if site.get("valid", True) and "post_body" not in site]
+
+    browser_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"}
+    found = {}
+    errors = 0
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {}
+        for site in sites:
+            name = username
+            for char in site.get("strip_bad_char", ""):
+                name = name.replace(char, "")
+            url = site["uri_check"].replace("{account}", name)
+            headers = {**browser_headers, **site.get("headers", {})}
+            futures[executor.submit(requests.get, url, headers=headers, timeout=REQUEST_TIMEOUT)] = (site, name)
+
+        for checked, future in enumerate(as_completed(futures), 1):
+            stderr.write(f"\r checked {checked}/{len(sites)}")
+            stderr.flush()
+            site, name = futures[future]
+            try:
+                response = future.result()
+                if site_has_account(site, response.status_code, response.text):
+                    found[site["name"]] = site.get("uri_pretty", site["uri_check"]).replace("{account}", name)
+            except Exception:
+                errors += 1
+    stderr.write("\n")
 
     print(f"\n {Wh}========== {Gr}SHOW INFORMATION USERNAME {Wh}==========")
     print()
-    for site, url in results.items():
-        print(f" {Wh}[ {Gr}+ {Wh}] {site} : {Gr}{url}")
+    for site_name in sorted(found):
+        print(f" {Wh}[ {Gr}+ {Wh}] {site_name} : {Gr}{found[site_name]}")
+    print(f"\n {Wh}found {Gr}{len(found)} {Wh}| checked {Gr}{len(sites)} {Wh}| errors {Gr}{errors}")
+
+
+def site_has_account(site, status_code, text):
+    return status_code == site["e_code"] and site["e_string"] in text
 
 
 @is_option
