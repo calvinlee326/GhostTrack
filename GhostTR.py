@@ -8,10 +8,8 @@
 
 import argparse
 import functools
-import json
 import requests
 import socket
-import time
 import os
 import phonenumbers
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -98,7 +96,6 @@ def IP_Track(ip=None):
     print(f"{Wh} DST             :{Gr}", tz.get("is_dst"))
     print(f"{Wh} Offset          :{Gr}", tz.get("offset"))
     print(f"{Wh} UTC             :{Gr}", tz.get("utc"))
-    print(f"{Wh} Current Time    :{Gr}", tz.get("current_time"))
 
 
 @is_option
@@ -167,7 +164,8 @@ def TrackLu(username=None):
     browser_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"}
     found = {}
     errors = 0
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    executor = ThreadPoolExecutor(max_workers=20)
+    try:
         futures = {}
         for site in sites:
             name = username
@@ -187,6 +185,9 @@ def TrackLu(username=None):
                     found[site["name"]] = site.get("uri_pretty", site["uri_check"]).replace("{account}", name)
             except Exception:
                 errors += 1
+    finally:
+        # drop queued checks so Ctrl+C exits without waiting for all ~660 requests
+        executor.shutdown(wait=False, cancel_futures=True)
     stderr.write("\n")
 
     print(f"\n {Wh}========== {Gr}SHOW INFORMATION USERNAME {Wh}==========")
@@ -369,4 +370,5 @@ if __name__ == '__main__':
     try:
         cli()
     except (KeyboardInterrupt, EOFError):
-        print(f'\n{Wh}[ {Re}! {Wh}] {Re}Exit')
+        print(f'\n{Wh}[ {Re}! {Wh}] {Re}Exit', flush=True)
+        os._exit(0)  # don't wait for in-flight username checks; nothing needs cleanup
