@@ -12,6 +12,7 @@ import requests
 import socket
 import os
 import phonenumbers
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from phonenumbers import carrier, geocoder, timezone
 from sys import stderr
@@ -19,7 +20,7 @@ from sys import stderr
 REQUEST_TIMEOUT = 10
 DEFAULT_PHONE_REGION = "TW"
 WMN_DATA_URL = "https://raw.githubusercontent.com/WebBreacher/WhatsMyName/main/wmn-data.json"
-USERNAME_FORBIDDEN_CHARS = "/?#@:"
+USERNAME_PATTERN = re.compile(r"[\w.\-]+")
 
 Bl = '\033[30m'  # VARIABLE BUAT WARNA CUYY
 Re = '\033[1;31m'
@@ -153,8 +154,8 @@ def TrackLu(username=None):
     if not username:
         print(f"\n {Wh}[ {Re}! {Wh}] {Re}Username cannot be empty")
         return
-    if any(char.isspace() or char in USERNAME_FORBIDDEN_CHARS for char in username):
-        print(f"\n {Wh}[ {Re}! {Wh}] {Re}Username cannot contain spaces or any of {USERNAME_FORBIDDEN_CHARS}")
+    if not USERNAME_PATTERN.fullmatch(username):
+        print(f"\n {Wh}[ {Re}! {Wh}] {Re}Username can only contain letters, digits, '.', '_' and '-'")
         return
 
     try:

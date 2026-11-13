@@ -21,9 +21,17 @@ class SiteHasAccountTest(unittest.TestCase):
 
 class UsernameInputTest(unittest.TestCase):
     def test_url_breaking_username_makes_no_request(self):
-        with mock.patch.object(GhostTR.requests, "get") as get, contextlib.redirect_stdout(io.StringIO()):
-            GhostTR.TrackLu.__wrapped__("evil.com/#")
-        get.assert_not_called()
+        for username in ["evil.com/#", "evil.com\\", "a?b", "a#b", "a@b", "a:b", "a b", "a%2fb", "a[b]"]:
+            with self.subTest(username=username):
+                with mock.patch.object(GhostTR.requests, "get") as get, contextlib.redirect_stdout(io.StringIO()):
+                    GhostTR.TrackLu.__wrapped__(username)
+                get.assert_not_called()
+
+    def test_normal_username_is_searched(self):
+        with mock.patch.object(GhostTR.requests, "get") as get, contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            GhostTR.TrackLu.__wrapped__("john.doe_1-x")
+        get.assert_called()
 
 
 class PrintableTest(unittest.TestCase):
