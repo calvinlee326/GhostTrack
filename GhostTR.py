@@ -46,55 +46,75 @@ def is_option(func):
 
 # FUNCTIONS FOR MENU
 @is_option
-def IP_Track():
-    ip = input(f"{Wh}\n Enter IP target : {Gr}")  # INPUT IP ADDRESS
+def IP_Track(ip=None):
+    if ip is None:
+        ip = input(f"{Wh}\n Enter IP target : {Gr}")  # INPUT IP ADDRESS
+    ip = ip.strip()
+    if ip and ":" not in ip and not ip.replace(".", "").isdigit():
+        try:
+            resolved = socket.gethostbyname(ip)
+        except (socket.gaierror, UnicodeError):
+            print(f"\n {Re}Error : could not resolve hostname '{ip}'")
+            return
+        print(f"{Wh}\n Resolved {ip} to {Gr}{resolved}")
+        ip = resolved
+    try:
+        ip_data = requests.get(f"https://ipwho.is/{ip}", timeout=REQUEST_TIMEOUT).json()  # API IPWHOIS.IS
+    except requests.RequestException as e:
+        print(f"\n {Re}Error : could not reach ipwho.is ({type(e).__name__})")
+        return
+    if not ip_data.get("success"):
+        print(f"\n {Re}Error : {ip_data.get('message', 'lookup failed')}")
+        return
+    connection = ip_data.get("connection", {})
+    tz = ip_data.get("timezone", {})
     print()
     print(f' {Wh}============= {Gr}SHOW INFORMATION IP ADDRESS {Wh}=============')
-    req_api = requests.get(f"http://ipwho.is/{ip}")  # API IPWHOIS.IS
-    ip_data = json.loads(req_api.text)
-    time.sleep(2)
-    print(f"{Wh}\n IP target       :{Gr}", ip)
-    print(f"{Wh} Type IP         :{Gr}", ip_data["type"])
-    print(f"{Wh} Country         :{Gr}", ip_data["country"])
-    print(f"{Wh} Country Code    :{Gr}", ip_data["country_code"])
-    print(f"{Wh} City            :{Gr}", ip_data["city"])
-    print(f"{Wh} Continent       :{Gr}", ip_data["continent"])
-    print(f"{Wh} Continent Code  :{Gr}", ip_data["continent_code"])
-    print(f"{Wh} Region          :{Gr}", ip_data["region"])
-    print(f"{Wh} Region Code     :{Gr}", ip_data["region_code"])
-    print(f"{Wh} Latitude        :{Gr}", ip_data["latitude"])
-    print(f"{Wh} Longitude       :{Gr}", ip_data["longitude"])
-    lat = int(ip_data['latitude'])
-    lon = int(ip_data['longitude'])
-    print(f"{Wh} Maps            :{Gr}", f"https://www.google.com/maps/@{lat},{lon},8z")
-    print(f"{Wh} EU              :{Gr}", ip_data["is_eu"])
-    print(f"{Wh} Postal          :{Gr}", ip_data["postal"])
-    print(f"{Wh} Calling Code    :{Gr}", ip_data["calling_code"])
-    print(f"{Wh} Capital         :{Gr}", ip_data["capital"])
-    print(f"{Wh} Borders         :{Gr}", ip_data["borders"])
-    print(f"{Wh} Country Flag    :{Gr}", ip_data["flag"]["emoji"])
-    print(f"{Wh} ASN             :{Gr}", ip_data["connection"]["asn"])
-    print(f"{Wh} ORG             :{Gr}", ip_data["connection"]["org"])
-    print(f"{Wh} ISP             :{Gr}", ip_data["connection"]["isp"])
-    print(f"{Wh} Domain          :{Gr}", ip_data["connection"]["domain"])
-    print(f"{Wh} ID              :{Gr}", ip_data["timezone"]["id"])
-    print(f"{Wh} ABBR            :{Gr}", ip_data["timezone"]["abbr"])
-    print(f"{Wh} DST             :{Gr}", ip_data["timezone"]["is_dst"])
-    print(f"{Wh} Offset          :{Gr}", ip_data["timezone"]["offset"])
-    print(f"{Wh} UTC             :{Gr}", ip_data["timezone"]["utc"])
-    print(f"{Wh} Current Time    :{Gr}", ip_data["timezone"]["current_time"])
+    print(f"{Wh}\n IP target       :{Gr}", ip_data.get("ip", ip))
+    print(f"{Wh} Type IP         :{Gr}", ip_data.get("type"))
+    print(f"{Wh} Country         :{Gr}", ip_data.get("country"))
+    print(f"{Wh} Country Code    :{Gr}", ip_data.get("country_code"))
+    print(f"{Wh} City            :{Gr}", ip_data.get("city"))
+    print(f"{Wh} Continent       :{Gr}", ip_data.get("continent"))
+    print(f"{Wh} Continent Code  :{Gr}", ip_data.get("continent_code"))
+    print(f"{Wh} Region          :{Gr}", ip_data.get("region"))
+    print(f"{Wh} Region Code     :{Gr}", ip_data.get("region_code"))
+    print(f"{Wh} Latitude        :{Gr}", ip_data.get("latitude"))
+    print(f"{Wh} Longitude       :{Gr}", ip_data.get("longitude"))
+    print(f"{Wh} Maps            :{Gr}", f"https://www.google.com/maps?q={ip_data.get('latitude')},{ip_data.get('longitude')}")
+    print(f"{Wh} EU              :{Gr}", ip_data.get("is_eu"))
+    print(f"{Wh} Postal          :{Gr}", ip_data.get("postal"))
+    print(f"{Wh} Calling Code    :{Gr}", ip_data.get("calling_code"))
+    print(f"{Wh} Capital         :{Gr}", ip_data.get("capital"))
+    print(f"{Wh} Borders         :{Gr}", ip_data.get("borders"))
+    print(f"{Wh} Country Flag    :{Gr}", ip_data.get("flag", {}).get("emoji"))
+    print(f"{Wh} ASN             :{Gr}", connection.get("asn"))
+    print(f"{Wh} ORG             :{Gr}", connection.get("org"))
+    print(f"{Wh} ISP             :{Gr}", connection.get("isp"))
+    print(f"{Wh} Domain          :{Gr}", connection.get("domain"))
+    print(f"{Wh} ID              :{Gr}", tz.get("id"))
+    print(f"{Wh} ABBR            :{Gr}", tz.get("abbr"))
+    print(f"{Wh} DST             :{Gr}", tz.get("is_dst"))
+    print(f"{Wh} Offset          :{Gr}", tz.get("offset"))
+    print(f"{Wh} UTC             :{Gr}", tz.get("utc"))
+    print(f"{Wh} Current Time    :{Gr}", tz.get("current_time"))
 
 
 @is_option
-def phoneGW():
-    User_phone = input(
-        f"\n {Wh}Enter phone number target {Gr}Ex [+6281xxxxxxxxx] {Wh}: {Gr}")  # INPUT NUMBER PHONE
-    default_region = "ID"  # DEFAULT NEGARA INDONESIA
+def phoneGW(number=None):
+    if number is None:
+        number = input(
+            f"\n {Wh}Enter phone number target {Gr}Ex [+886912345678] {Wh}: {Gr}")  # INPUT NUMBER PHONE
+    default_region = DEFAULT_PHONE_REGION
 
-    parsed_number = phonenumbers.parse(User_phone, default_region)  # VARIABLE PHONENUMBERS
+    try:
+        parsed_number = phonenumbers.parse(number, default_region)  # VARIABLE PHONENUMBERS
+    except phonenumbers.NumberParseException:
+        print(f"\n {Re}Error : invalid phone number '{number}'")
+        return
     region_code = phonenumbers.region_code_for_number(parsed_number)
     jenis_provider = carrier.name_for_number(parsed_number, "en")
-    location = geocoder.description_for_number(parsed_number, "id")
+    location = geocoder.description_for_number(parsed_number, "en")
     is_valid_number = phonenumbers.is_valid_number(parsed_number)
     is_possible_number = phonenumbers.is_possible_number(parsed_number)
     formatted_number = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
@@ -176,7 +196,12 @@ def TrackLu():
 
 @is_option
 def showIP():
-    respone = requests.get('https://api.ipify.org/')
+    try:
+        respone = requests.get('https://api.ipify.org/', timeout=REQUEST_TIMEOUT)
+        respone.raise_for_status()
+    except requests.RequestException as e:
+        print(f"\n {Re}Error : could not reach api.ipify.org ({type(e).__name__})")
+        return
     Show_IP = respone.text
 
     print(f"\n {Wh}========== {Gr}SHOW INFORMATION YOUR IP {Wh}==========")
