@@ -6,13 +6,21 @@
 
 # IMPORT MODULE
 
+import argparse
+import functools
 import json
 import requests
+import socket
 import time
 import os
 import phonenumbers
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from phonenumbers import carrier, geocoder, timezone
 from sys import stderr
+
+REQUEST_TIMEOUT = 10
+DEFAULT_PHONE_REGION = "TW"
+WMN_DATA_URL = "https://raw.githubusercontent.com/WebBreacher/WhatsMyName/main/wmn-data.json"
 
 Bl = '\033[30m'  # VARIABLE BUAT WARNA CUYY
 Re = '\033[1;31m'
